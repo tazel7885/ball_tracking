@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+
+<launch>
+
+    <node name="tracking" pkg="ball_trakcing" type="ball_trakcing_node"/>
+
+    <arg name="gui" default="ON" />
+    <arg name="time" default="1" />
+
+</launch>
