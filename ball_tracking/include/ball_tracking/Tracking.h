@@ -49,15 +49,15 @@ class Tracking {
         void Visualize();
         void BallPredictPos();
         
-        //void BallDepthCallback(const alice3_robocup_msgs::FoundObjectArray::ConstPtr& msg);
-        //void DetectedBallCallback(const std_msgs::Bool::ConstPtr& msg);
+        void BallDepthCallback(const geometry_msgs::Pose2D::ConstPtr& msg);
+        void DetectedBallCallback(const std_msgs::Bool::ConstPtr& msg);
 
         ros::Subscriber sub_depth;
         ros::Subscriber sub_detect_ball;
 
-        ros::Publisher pub_ball_kf;
+        ros::Publisher pub_ball_pos;
         ros::Publisher pub_ball_vel;
-        ros::Publisher pub_ball_pre;
+        ros::Publisher pub_predict_ball_pos;
 
         std::string topic_depth;
         std::string topic_ball;
@@ -77,7 +77,6 @@ class Tracking {
 
         bool is_initialized;
         float dt;
-        float predict_time;
 
         bool check;
 
@@ -89,10 +88,7 @@ class Tracking {
         std::string color_image_map_path;
         cv::Mat color_map_image;
 
-        std::string mode;
-
-        geometry_msgs::Vector3 predict_ball;
-
+        std::string gui;
 };
 
 #endif

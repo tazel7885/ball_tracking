@@ -6,7 +6,7 @@ using namespace std;
 Tracking::Tracking(ros::NodeHandle nh) 
     : nh(nh),
       topic_pos("/ball_pos"),
-      topic_ball("/detected_ball"),
+      topic_ball("/detected_ball")
 {
     Initialize();
     Process();
@@ -17,8 +17,6 @@ Tracking::~Tracking(){}
 void Tracking::Initialize()
 {
     dt = 0.05;
-    predict_time = 1.0;
-
     count = 0;
     
     is_initialized = false;
@@ -32,18 +30,6 @@ void Tracking::Initialize()
     ball_vel[2] = {0, };
 
     ball_direction[2] = {0, };
-
-    pos_rotation_matrix.resize(2,2);
-    pos_rotation_matrix << 1, 0,
-                           0, 1;
-
-    pos_object_matrix.resize(2,1);
-    pos_object_matrix << 1,
-                         0;
-
-    pos_result_matrix.resize(2,1);
-    pos_result_matrix << 1,
-                         0;
 
     // create a 4D state vector, [x, vx, ax, y, vy, ay]T
     kf.x = Eigen::VectorXd(6);
@@ -79,13 +65,13 @@ void Tracking::Initialize()
     sub_depth = nh.subscribe(topic_pos, 1, &Tracking::BallDepthCallback, this);
     sub_detect_ball = nh.subscribe(topic_ball, 1, &Tracking::DetectedBallCallback, this);
 
-    pub_ball_pos = nh.advertise<geometry_msgs::Pose2D>("/ball_pos", 10);
-    pub_ball_vel = nh.advertise<geometry_msgs::Pose2D>("/ball_vel", 10);
+    pub_ball_pos = nh.advertise<geometry_msgs::Pose2D>("/kf_ball_pos", 10);
+    pub_ball_vel = nh.advertise<geometry_msgs::Pose2D>("/kf_ball_vel", 10);
     pub_predict_ball_pos = nh.advertise<geometry_msgs::Pose2D>("/predict_ball_pos", 10);
 
     nh.getParam("/gui", gui);
-
-    if(gui == "on")
+    gui = "ON";
+    if(gui == "ON")
     {
 		color_image_map_path = ros::package::getPath("ball_tracking") + "/map/test_field.jpg";
 		color_map_image = cv::imread(color_image_map_path.c_str());
@@ -111,8 +97,8 @@ void Tracking::Initialize()
 
 void Tracking::BallDepthCallback(const geometry_msgs::Pose2D::ConstPtr& msg)
 {
-    sensing_ball.x = msg->pos.x;
-    sensing_ball.y = msg->pos.y;
+    sensing_ball.x = msg->x;
+    sensing_ball.y = msg->y;
 
     check = true;
 }
@@ -135,7 +121,7 @@ void Tracking::Process()
             BallPredictPos();
             BallPub();
             
-            if(mode == "on")
+            if(gui == "ON")
             {
                 Visualize();
             }
@@ -215,9 +201,11 @@ void Tracking::Filtering()
 void Tracking::BallPredictPos()
 {
     kf_pred = kf;
-
+    float predict_time = 1.0;
     for(int i=0; i< (predict_time / dt); i++) {kf_pred.Predict();}
-
+    cout << predict_time / dt << endl;
+    cout << dt << endl;
+    cout << predict_time << endl;
     predict_ball.x = kf_pred.x(0);
     predict_ball.y = kf_pred.x(3);
 }
@@ -235,8 +223,8 @@ void Tracking::BallPub()
     ball_velocity.x = ball_speed.x;   // ball_speed Pub
     ball_velocity.y = ball_speed.y;
 
-    ball_position_position.x = predict_ball.x;   // ball_predict Pub
-    ball_position_position.y = predict_ball.y;
+    predict_ball_position.x = predict_ball.x;   // ball_predict Pub
+    predict_ball_position.y = predict_ball.y;
 
     pub_ball_vel.publish(ball_velocity);
     pub_ball_pos.publish(ball_position);
