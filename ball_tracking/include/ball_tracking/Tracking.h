@@ -35,6 +35,7 @@ class Tracking {
         ~Tracking();
 
         KalmanFilter kf;
+        KalmanFilter kf_clone;
         KalmanFilter kf_pred;
 
     private:

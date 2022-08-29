@@ -5,8 +5,8 @@ using namespace std;
 
 Tracking::Tracking(ros::NodeHandle nh) 
     : nh(nh),
-      topic_pos("/ball_pos"),
-      topic_ball("/detected_ball")
+      topic_pos("/ball_position"),
+      topic_ball("/ball_detect")
 {
     Initialize();
     Process();
@@ -61,6 +61,8 @@ void Tracking::Initialize()
             0, 0, 0, 0.01, 0, 0,
             0, 0, 0, 0, 0.01, 0,
             0, 0, 0, 0, 0, 0.01;
+
+    kf_clone = kf;
 
     sub_depth = nh.subscribe(topic_pos, 1, &Tracking::BallDepthCallback, this);
     sub_detect_ball = nh.subscribe(topic_ball, 1, &Tracking::DetectedBallCallback, this);
@@ -118,7 +120,7 @@ void Tracking::Process()
         {   
             UpdateBallPosition();
             Filtering();
-            BallPredictPos();
+            //BallPredictPos();
             BallPub();
             
             if(gui == "ON")
@@ -147,19 +149,19 @@ void Tracking::Filtering()
 
         kf.P = Eigen::MatrixXd(6,6);
         
-        kf.P << 1, 0, 0, 0, 0, 0,  
-                0, 10, 0, 0, 0, 0,
-                0, 0, 100, 0, 0, 0,
-                0, 0, 0, 1, 0, 0,   
-                0, 0, 0, 0, 10, 0,
-                0, 0, 0, 0, 0, 100;
+        kf.P << 0.1, 0, 0, 0, 0, 0,  
+                0, 0.1, 0, 0, 0, 0,
+                0, 0, 0.1, 0, 0, 0,
+                0, 0, 0, 0.1, 0, 0,   
+                0, 0, 0, 0, 0.1, 0,
+                0, 0, 0, 0, 0, 0.1;
 
         is_initialized = true;
 
         return;
     }
 
-    else if(detected_ball)
+    else if(is_initialized && detected_ball)
     {
         Eigen::VectorXd raw_ball = Eigen::VectorXd(2);
         raw_ball << update_ball.x, update_ball.y;
@@ -175,37 +177,43 @@ void Tracking::Filtering()
 
         return;
     }
-
+    /*
     else if(is_initialized && !detected_ball)
     {
-        kf.Predict();
+        is_initialized = false;
 
-        if(count > 20)
-        {
-            count = 0;
-            is_initialized = false;
-
-            return;
-        }
+        //kf.Predict();
 
         filtering_ball.x = kf.x(0);
         filtering_ball.y = kf.x(3);
 
-        ball_speed.x = kf.x(1);
-        ball_speed.y = kf.x(4);
-
-        count++;
+        ball_speed.x = 0.0;
+        ball_speed.y = 0.0;
     }
+
+    else if(!is_initialized && !detected_ball)
+    {
+        is_initialized = false;
+    }
+    */
+    else
+    {
+        is_initialized = false;
+
+        filtering_ball.x = kf.x(0);
+        filtering_ball.y = kf.x(3);
+
+        ball_speed.x = 0.0;
+        ball_speed.y = 0.0;
+    }
+    
 }
 
 void Tracking::BallPredictPos()
 {
     kf_pred = kf;
-    float predict_time = 1.0;
+    float predict_time = 0.3;
     for(int i=0; i< (predict_time / dt); i++) {kf_pred.Predict();}
-    cout << predict_time / dt << endl;
-    cout << dt << endl;
-    cout << predict_time << endl;
     predict_ball.x = kf_pred.x(0);
     predict_ball.y = kf_pred.x(3);
 }
@@ -226,6 +234,10 @@ void Tracking::BallPub()
     predict_ball_position.x = predict_ball.x;   // ball_predict Pub
     predict_ball_position.y = predict_ball.y;
 
+    cout << "vel_x:   " << ball_speed.x << endl;
+    cout << "vel_y:   " << ball_speed.y << endl;
+    cout << "-----------" << endl;
+
     pub_ball_vel.publish(ball_velocity);
     pub_ball_pos.publish(ball_position);
     pub_predict_ball_pos.publish(predict_ball_position);
@@ -241,9 +253,9 @@ void Tracking::Visualize()
     else
         cv::circle(ball_tracking_img, ball_point, 14, cv::Scalar(0, 0, 255), -1);  
 
-    cv::Point2f ball_pred_point = cv::Point2f((predict_ball.x) * 100 + ball_tracking_img.size().width / 2, ball_tracking_img.size().height/2 - predict_ball.y * 100);
-    cv::circle(ball_tracking_img, ball_pred_point, 12, cv::Scalar(255, 255, 0), -1); 
+    //cv::Point2f ball_pred_point = cv::Point2f((predict_ball.x) * 100 + ball_tracking_img.size().width / 2, ball_tracking_img.size().height/2 - predict_ball.y * 100);
+    //cv::circle(ball_tracking_img, ball_pred_point, 12, cv::Scalar(255, 255, 0), -1); 
 
-    cv::imshow("ball tracking image", ball_tracking_img);
-    cv::waitKey(1);
+    //cv::imshow("ball tracking image", ball_tracking_img);
+    //cv::waitKey(1);
 }
